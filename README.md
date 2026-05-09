@@ -6,13 +6,9 @@ A book discovery app built with **Kotlin Multiplatform** (KMM) and **Compose Mul
 
 ## Demo
 
-### Android
-
-<video src="media/demo_android.mp4" width="320" controls></video>
-
-### iOS
-
-<video src="media/demo_ios.mp4" width="320" controls></video>
+| Android | iOS |
+|:---:|:---:|
+| <img src="media/demo_android.gif" width="300"/> | <img src="media/demo_ios.gif" width="300"/> |
 
 ---
 
