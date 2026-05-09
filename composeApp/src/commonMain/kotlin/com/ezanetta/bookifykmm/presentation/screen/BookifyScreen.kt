@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ezanetta.bookifykmm.domain.model.AppTab
 import com.ezanetta.bookifykmm.domain.model.Book
+import com.ezanetta.bookifykmm.domain.model.Genre
 import com.ezanetta.bookifykmm.presentation.components.BookifyBottomNav
 import com.ezanetta.bookifykmm.presentation.components.BookifyHeader
 import com.ezanetta.bookifykmm.presentation.components.GenreSwitcher
@@ -62,6 +65,9 @@ fun BookifyScreen() {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val colors = LocalBookifyColors.current
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
+    val genreGridStates = remember { Genre.entries.associateWith { LazyGridState() } }
+    val wishlistGridState = rememberLazyGridState()
 
     Box(modifier = Modifier.fillMaxSize().background(colors.bg)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -88,8 +94,8 @@ fun BookifyScreen() {
                     )
                 } else {
                     when (state.tab) {
-                        AppTab.HOME -> HomeContent(viewModel = viewModel)
-                        AppTab.WISHLIST -> WishlistContent(viewModel = viewModel)
+                        AppTab.HOME -> HomeContent(viewModel = viewModel, genreGridStates = genreGridStates)
+                        AppTab.WISHLIST -> WishlistContent(viewModel = viewModel, gridState = wishlistGridState)
                     }
                 }
             }
@@ -104,7 +110,7 @@ fun BookifyScreen() {
 }
 
 @Composable
-private fun HomeContent(viewModel: BookifyViewModel) {
+private fun HomeContent(viewModel: BookifyViewModel, genreGridStates: Map<Genre, LazyGridState>) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -122,7 +128,7 @@ private fun HomeContent(viewModel: BookifyViewModel) {
             },
             label = "genre",
             modifier = Modifier.weight(1f),
-        ) { (_, loading) ->
+        ) { (genre, loading) ->
             when {
                 loading && state.currentBooks.isEmpty() -> LoadingState(modifier = Modifier.fillMaxSize())
                 state.error != null && state.currentBooks.isEmpty() -> ErrorState(
@@ -130,14 +136,18 @@ private fun HomeContent(viewModel: BookifyViewModel) {
                     onRetry = { viewModel.retryLoad() },
                     modifier = Modifier.fillMaxSize(),
                 )
-                else -> BooksGrid(books = state.currentBooks, onBookClick = { viewModel.openBook(it) })
+                else -> BooksGrid(
+                    books = state.currentBooks,
+                    gridState = genreGridStates[genre] ?: LazyGridState(),
+                    onBookClick = { viewModel.openBook(it) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun WishlistContent(viewModel: BookifyViewModel) {
+private fun WishlistContent(viewModel: BookifyViewModel, gridState: LazyGridState) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val wishlisted = state.wishlistedBooks
     val eyebrow = if (wishlisted.isNotEmpty()) "${wishlisted.size} saved" else "For later"
@@ -148,7 +158,7 @@ private fun WishlistContent(viewModel: BookifyViewModel) {
         if (wishlisted.isEmpty()) {
             EmptyWishlistState(modifier = Modifier.fillMaxSize())
         } else {
-            BooksGrid(books = wishlisted, onBookClick = { viewModel.openBook(it) })
+            BooksGrid(books = wishlisted, gridState = gridState, onBookClick = { viewModel.openBook(it) })
         }
     }
 }
@@ -156,11 +166,13 @@ private fun WishlistContent(viewModel: BookifyViewModel) {
 @Composable
 private fun BooksGrid(
     books: List<Book>,
+    gridState: LazyGridState,
     onBookClick: (Book) -> Unit,
 ) {
     val d = LocalBookifyDensity.current
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
+        state = gridState,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         horizontalArrangement = Arrangement.spacedBy(d.gap),
         verticalArrangement = Arrangement.spacedBy(d.gap + 8.dp),

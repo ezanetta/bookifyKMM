@@ -1,7 +1,8 @@
 package com.ezanetta.bookifykmm.presentation.components
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,10 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,12 +60,23 @@ fun GenreSwitcher(
     var boundsReady by remember { mutableStateOf(false) }
     val selectedIndex = genres.indexOf(selectedGenre)
 
-    val targetLeft = if (boundsReady) tabBounds.getOrNull(selectedIndex)?.left ?: 0.dp else 0.dp
-    val targetWidth = if (boundsReady) tabBounds.getOrNull(selectedIndex)?.width ?: 0.dp else 0.dp
-
     val animSpec = tween<Dp>(durationMillis = 280, easing = FastOutSlowInEasing)
-    val indicatorLeft by animateDpAsState(targetLeft, animSpec, label = "indicatorLeft")
-    val indicatorWidth by animateDpAsState(targetWidth, animSpec, label = "indicatorWidth")
+    val indicatorLeft = remember { Animatable(0.dp, Dp.VectorConverter) }
+    val indicatorWidth = remember { Animatable(0.dp, Dp.VectorConverter) }
+    var initialized by remember { mutableStateOf(false) }
+
+    LaunchedEffect(boundsReady, selectedIndex) {
+        if (!boundsReady) return@LaunchedEffect
+        val target = tabBounds.getOrNull(selectedIndex) ?: return@LaunchedEffect
+        if (!initialized) {
+            indicatorLeft.snapTo(target.left)
+            indicatorWidth.snapTo(target.width)
+            initialized = true
+        } else {
+            launch { indicatorLeft.animateTo(target.left, animSpec) }
+            indicatorWidth.animateTo(target.width, animSpec)
+        }
+    }
 
     Box(
         modifier = modifier
@@ -74,11 +88,11 @@ fun GenreSwitcher(
             .padding(4.dp),
     ) {
         // Sliding indicator drawn behind labels
-        if (boundsReady && indicatorWidth > 0.dp) {
+        if (initialized && indicatorWidth.value > 0.dp) {
             Box(
                 modifier = Modifier
-                    .offset(x = indicatorLeft)
-                    .width(indicatorWidth)
+                    .offset(x = indicatorLeft.value)
+                    .width(indicatorWidth.value)
                     .height(INDICATOR_HEIGHT)
                     .shadow(
                         elevation = 2.dp,

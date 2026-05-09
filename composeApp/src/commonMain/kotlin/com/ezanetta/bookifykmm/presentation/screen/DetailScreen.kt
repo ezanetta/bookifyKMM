@@ -108,7 +108,6 @@ fun DetailScreen(
             }
         }
 
-        // Hero cover
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
