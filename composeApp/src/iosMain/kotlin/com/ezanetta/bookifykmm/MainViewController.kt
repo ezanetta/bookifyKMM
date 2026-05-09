@@ -1,14 +1,11 @@
 package com.ezanetta.bookifykmm
 
 import androidx.compose.ui.window.ComposeUIViewController
-import com.ezanetta.bookifykmm.di.appModules
-import org.koin.core.context.startKoin
+import com.ezanetta.bookifykmm.di.IosAppGraph
+import dev.zacsweers.metro.createGraph
 
-private val koinInit by lazy {
-    startKoin { modules(appModules) }
-}
+private val appGraph: IosAppGraph by lazy { createGraph<IosAppGraph>() }
 
-fun MainViewController() = run {
-    koinInit
-    ComposeUIViewController { App() }
+fun MainViewController() = ComposeUIViewController {
+    App(graph = appGraph)
 }

@@ -3,12 +3,14 @@ package com.ezanetta.bookifykmm.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ezanetta.bookifykmm.domain.repository.WishlistRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
+@Inject
 class DetailViewModel(
     private val wishlistRepository: WishlistRepository,
 ) : ViewModel() {

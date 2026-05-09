@@ -56,15 +56,14 @@ import com.ezanetta.bookifykmm.presentation.theme.LocalBookifyColors
 import com.ezanetta.bookifykmm.presentation.theme.LocalBookifyDensity
 import com.ezanetta.bookifykmm.presentation.theme.NewsreaderFamily
 import com.ezanetta.bookifykmm.presentation.theme.toColors
+import com.ezanetta.bookifykmm.di.AppGraph
 import com.ezanetta.bookifykmm.presentation.viewmodel.BookifyViewModel
 import com.ezanetta.bookifykmm.presentation.viewmodel.SettingsViewModel
-import org.koin.compose.getKoin
 
 @Composable
-fun BookifyScreen() {
-    val koin = getKoin()
-    val viewModel: BookifyViewModel = viewModel { koin.get(BookifyViewModel::class) }
-    val settingsViewModel: SettingsViewModel = viewModel { koin.get(SettingsViewModel::class) }
+fun BookifyScreen(graph: AppGraph) {
+    val viewModel: BookifyViewModel = viewModel { graph.bookifyViewModel() }
+    val settingsViewModel: SettingsViewModel = viewModel { graph.settingsViewModel() }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val selectedTheme by settingsViewModel.selectedTheme.collectAsStateWithLifecycle()
     val colors = selectedTheme.toColors()
@@ -100,6 +99,7 @@ fun BookifyScreen() {
                     is NavTarget.Detail -> DetailScreen(
                         book = target.book,
                         onBack = { viewModel.closeBook() },
+                        graph = graph,
                     )
                     NavTarget.Settings -> SettingsScreen(
                         selectedTheme = selectedTheme,
