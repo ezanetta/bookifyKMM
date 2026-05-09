@@ -6,7 +6,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 @Composable
 fun BookifyTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalBookifyColors provides SageColors,
         LocalBookifyDensity provides SpaciousDensity,
         content = content,
     )

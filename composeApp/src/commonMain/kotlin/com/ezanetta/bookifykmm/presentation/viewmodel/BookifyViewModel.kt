@@ -3,6 +3,7 @@ package com.ezanetta.bookifykmm.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ezanetta.bookifykmm.domain.model.AppTab
+import com.ezanetta.bookifykmm.domain.model.AppTheme
 import com.ezanetta.bookifykmm.domain.model.Book
 import com.ezanetta.bookifykmm.domain.model.Genre
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
@@ -19,6 +20,7 @@ data class BookifyUiState(
     val genre: Genre = Genre.FANTASY,
     val openBook: Book? = null,
     val wishlist: Set<String> = emptySet(),
+    val theme: AppTheme = AppTheme.SAGE,
     // Books keyed by genre — populated lazily
     val booksByGenre: Map<Genre, List<Book>> = emptyMap(),
     val loading: Boolean = true,
@@ -64,6 +66,10 @@ class BookifyViewModel(
             val updated = if (bookKey in state.wishlist) state.wishlist - bookKey else state.wishlist + bookKey
             state.copy(wishlist = updated)
         }
+    }
+
+    fun selectTheme(theme: AppTheme) {
+        _state.update { it.copy(theme = theme) }
     }
 
     fun retryLoad() {

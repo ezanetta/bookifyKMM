@@ -2,6 +2,7 @@ package com.ezanetta.bookifykmm
 
 import app.cash.turbine.test
 import com.ezanetta.bookifykmm.domain.model.AppTab
+import com.ezanetta.bookifykmm.domain.model.AppTheme
 import com.ezanetta.bookifykmm.domain.model.Book
 import com.ezanetta.bookifykmm.domain.model.Genre
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
@@ -351,6 +352,74 @@ class BookifyViewModelTest {
         assertTrue(fantasyBook1 in wishlisted)
         assertTrue(scifiBook in wishlisted)
         assertTrue(thrillerBook in wishlisted)
+    }
+
+    // ── Theme ────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `initial theme is SAGE`() = runTest {
+        val vm = BookifyViewModel(repository)
+        assertEquals(AppTheme.SAGE, vm.state.value.theme)
+    }
+
+    @Test
+    fun `selectTheme updates the theme field`() = runTest {
+        val vm = BookifyViewModel(repository)
+
+        vm.selectTheme(AppTheme.INK)
+
+        assertEquals(AppTheme.INK, vm.state.value.theme)
+    }
+
+    @Test
+    fun `selectTheme can select every available theme`() = runTest {
+        val vm = BookifyViewModel(repository)
+
+        AppTheme.entries.forEach { theme ->
+            vm.selectTheme(theme)
+            assertEquals(theme, vm.state.value.theme)
+        }
+    }
+
+    @Test
+    fun `selectTheme does not affect tab`() = runTest {
+        val vm = BookifyViewModel(repository)
+        vm.selectTab(AppTab.WISHLIST)
+
+        vm.selectTheme(AppTheme.LIBRARY)
+
+        assertEquals(AppTab.WISHLIST, vm.state.value.tab)
+    }
+
+    @Test
+    fun `selectTheme does not affect genre`() = runTest {
+        val vm = BookifyViewModel(repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.selectGenre(Genre.HORROR)
+
+        vm.selectTheme(AppTheme.BONE)
+
+        assertEquals(Genre.HORROR, vm.state.value.genre)
+    }
+
+    @Test
+    fun `selectTheme does not affect wishlist`() = runTest {
+        val vm = BookifyViewModel(repository)
+        vm.toggleWishlist(fantasyBook1.key)
+
+        vm.selectTheme(AppTheme.INK)
+
+        assertTrue(fantasyBook1.key in vm.state.value.wishlist)
+    }
+
+    @Test
+    fun `selectTheme does not affect openBook`() = runTest {
+        val vm = BookifyViewModel(repository)
+        vm.openBook(fantasyBook1)
+
+        vm.selectTheme(AppTheme.LIBRARY)
+
+        assertEquals(fantasyBook1, vm.state.value.openBook)
     }
 
     // ── allBooks deduplication ────────────────────────────────────────────────

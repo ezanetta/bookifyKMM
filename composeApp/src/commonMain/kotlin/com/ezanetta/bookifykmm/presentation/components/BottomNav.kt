@@ -46,12 +46,13 @@ fun BookifyBottomNav(
 ) {
     val colors = LocalBookifyColors.current
     val dmSans = DmSansFamily
-    val borderColor = Color(0x0F000000)
+    val bgColor = if (colors.dark) Color(0xD91C1916) else Color(0xB3FFFFFF)
+    val borderColor = if (colors.dark) Color(0x14FFFFFF) else Color(0x0F000000)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xB3FFFFFF))
+            .background(bgColor)
             .drawBehind {
                 drawLine(
                     color = borderColor,

@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,11 +51,11 @@ import com.ezanetta.bookifykmm.presentation.components.BookifyBottomNav
 import com.ezanetta.bookifykmm.presentation.components.BookifyHeader
 import com.ezanetta.bookifykmm.presentation.components.GenreSwitcher
 import com.ezanetta.bookifykmm.presentation.components.GridCard
-import com.ezanetta.bookifykmm.presentation.theme.BookifyColors
 import com.ezanetta.bookifykmm.presentation.theme.DmSansFamily
 import com.ezanetta.bookifykmm.presentation.theme.LocalBookifyColors
 import com.ezanetta.bookifykmm.presentation.theme.LocalBookifyDensity
 import com.ezanetta.bookifykmm.presentation.theme.NewsreaderFamily
+import com.ezanetta.bookifykmm.presentation.theme.toColors
 import com.ezanetta.bookifykmm.presentation.viewmodel.BookifyViewModel
 import org.koin.compose.getKoin
 
@@ -63,12 +64,13 @@ fun BookifyScreen() {
     val koin = getKoin()
     val viewModel: BookifyViewModel = viewModel { koin.get(BookifyViewModel::class) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val colors = LocalBookifyColors.current
+    val colors = state.theme.toColors()
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     val genreGridStates = remember { Genre.entries.associateWith { LazyGridState() } }
     val wishlistGridState = rememberLazyGridState()
 
+    CompositionLocalProvider(LocalBookifyColors provides colors) {
     Box(modifier = Modifier.fillMaxSize().background(colors.bg)) {
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(Modifier.height(statusBarHeight))
@@ -107,6 +109,7 @@ fun BookifyScreen() {
             )
         }
     }
+    } // CompositionLocalProvider
 }
 
 @Composable
@@ -114,7 +117,12 @@ private fun HomeContent(viewModel: BookifyViewModel, genreGridStates: Map<Genre,
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BookifyHeader(eyebrow = "YOUR SHELF", title = "Bookify")
+        BookifyHeader(
+            eyebrow = "YOUR SHELF",
+            title = "Bookify",
+            selectedTheme = state.theme,
+            onSelectTheme = { viewModel.selectTheme(it) },
+        )
         GenreSwitcher(
             selectedGenre = state.genre,
             onGenreSelect = { viewModel.selectGenre(it) },
@@ -153,7 +161,12 @@ private fun WishlistContent(viewModel: BookifyViewModel, gridState: LazyGridStat
     val eyebrow = if (wishlisted.isNotEmpty()) "${wishlisted.size} saved" else "For later"
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BookifyHeader(eyebrow = eyebrow, title = "Wishlist")
+        BookifyHeader(
+            eyebrow = eyebrow,
+            title = "Wishlist",
+            selectedTheme = state.theme,
+            onSelectTheme = { viewModel.selectTheme(it) },
+        )
         Spacer(Modifier.height(6.dp))
         if (wishlisted.isEmpty()) {
             EmptyWishlistState(modifier = Modifier.fillMaxSize())
