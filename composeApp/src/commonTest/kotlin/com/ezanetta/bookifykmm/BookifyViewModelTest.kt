@@ -2,13 +2,15 @@ package com.ezanetta.bookifykmm
 
 import app.cash.turbine.test
 import com.ezanetta.bookifykmm.domain.model.AppTab
-import com.ezanetta.bookifykmm.domain.model.AppTheme
 import com.ezanetta.bookifykmm.domain.model.Book
 import com.ezanetta.bookifykmm.domain.model.Genre
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
+import com.ezanetta.bookifykmm.domain.repository.WishlistRepository
 import com.ezanetta.bookifykmm.presentation.viewmodel.BookifyViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -26,6 +28,7 @@ class BookifyViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeMultiGenreRepository
+    private lateinit var wishlistRepository: FakeWishlistRepository
 
     private val fantasyBook1 = Book(
         title = "Alice's Adventures in Wonderland",
@@ -67,6 +70,7 @@ class BookifyViewModelTest {
             setup(Genre.THRILLER, Result.success(listOf(thrillerBook)))
             setup(Genre.HORROR, Result.success(listOf(horrorBook)))
         }
+        wishlistRepository = FakeWishlistRepository()
     }
 
     @AfterTest
@@ -74,35 +78,37 @@ class BookifyViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun buildVm() = BookifyViewModel(repository, wishlistRepository)
+
     // ── Initial state ────────────────────────────────────────────────────────
 
     @Test
     fun `initial tab is HOME`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         assertEquals(AppTab.HOME, vm.state.value.tab)
     }
 
     @Test
     fun `initial genre is FANTASY`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         assertEquals(Genre.FANTASY, vm.state.value.genre)
     }
 
     @Test
     fun `initial openBook is null`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         assertNull(vm.state.value.openBook)
     }
 
     @Test
     fun `initial wishlist is empty`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         assertTrue(vm.state.value.wishlist.isEmpty())
     }
 
     @Test
     fun `initial loading is true before coroutines run`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         vm.state.test {
             assertTrue(awaitItem().loading)
             cancelAndIgnoreRemainingEvents()
@@ -113,7 +119,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `all four genres are loaded on init`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = vm.state.value
@@ -125,7 +131,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `loading is false after all genres load`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         vm.state.test {
             awaitItem() // loading = true
             testDispatcher.scheduler.advanceUntilIdle()
@@ -136,7 +142,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `currentBooks returns books for the selected genre`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(listOf(fantasyBook1, fantasyBook2), vm.state.value.currentBooks)
@@ -144,7 +150,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `currentBooks updates after selectGenre`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         vm.selectGenre(Genre.HORROR)
@@ -154,7 +160,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `selectGenre updates the genre field`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         vm.selectGenre(Genre.SCIENCE_FICTION)
@@ -164,7 +170,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `selectGenre with already-loaded genre does not trigger another API call`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         val callsBefore = repository.callCount[Genre.FANTASY] ?: 0
@@ -176,7 +182,7 @@ class BookifyViewModelTest {
     @Test
     fun `error is set when at least one genre fails to load`() = runTest {
         repository.setup(Genre.HORROR, Result.failure(Exception("Network error")))
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("Network error", vm.state.value.error)
@@ -185,7 +191,7 @@ class BookifyViewModelTest {
     @Test
     fun `successfully loaded genres are still available after a partial failure`() = runTest {
         repository.setup(Genre.HORROR, Result.failure(Exception("Network error")))
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(listOf(fantasyBook1, fantasyBook2), vm.state.value.booksByGenre[Genre.FANTASY])
@@ -197,7 +203,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `openBook sets openBook in state`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
 
         vm.openBook(fantasyBook1)
 
@@ -206,7 +212,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `closeBook clears openBook`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         vm.openBook(fantasyBook1)
 
         vm.closeBook()
@@ -216,7 +222,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `selectTab updates the tab`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
 
         vm.selectTab(AppTab.WISHLIST)
 
@@ -225,7 +231,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `selectTab clears openBook`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         vm.openBook(fantasyBook1)
 
         vm.selectTab(AppTab.WISHLIST)
@@ -235,7 +241,7 @@ class BookifyViewModelTest {
 
     @Test
     fun `selectTab back to HOME also clears openBook`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         vm.selectTab(AppTab.WISHLIST)
         vm.openBook(horrorBook)
 
@@ -244,68 +250,36 @@ class BookifyViewModelTest {
         assertNull(vm.state.value.openBook)
     }
 
-    // ── Wishlist — add / remove ───────────────────────────────────────────────
+    // ── Wishlist — mirrors WishlistRepository ────────────────────────────────
 
     @Test
-    fun `toggleWishlist adds the book key when it is not in the wishlist`() = runTest {
-        val vm = BookifyViewModel(repository)
+    fun `wishlist in state reflects repository additions`() = runTest {
+        val vm = buildVm()
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        vm.toggleWishlist(fantasyBook1.key)
+        wishlistRepository.toggle(fantasyBook1.key)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(fantasyBook1.key in vm.state.value.wishlist)
     }
 
     @Test
-    fun `toggleWishlist removes the book key when it is already in the wishlist`() = runTest {
-        val vm = BookifyViewModel(repository)
-        vm.toggleWishlist(fantasyBook1.key)
+    fun `wishlist in state reflects repository removals`() = runTest {
+        val vm = buildVm()
+        wishlistRepository.toggle(fantasyBook1.key)
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        vm.toggleWishlist(fantasyBook1.key)
-
-        assertFalse(fantasyBook1.key in vm.state.value.wishlist)
-    }
-
-    @Test
-    fun `toggling the same book twice leaves the wishlist empty`() = runTest {
-        val vm = BookifyViewModel(repository)
-
-        vm.toggleWishlist(fantasyBook1.key)
-        vm.toggleWishlist(fantasyBook1.key)
-
-        assertTrue(vm.state.value.wishlist.isEmpty())
-    }
-
-    @Test
-    fun `multiple books can be wishlisted independently`() = runTest {
-        val vm = BookifyViewModel(repository)
-
-        vm.toggleWishlist(fantasyBook1.key)
-        vm.toggleWishlist(fantasyBook2.key)
-        vm.toggleWishlist(horrorBook.key)
-
-        assertEquals(3, vm.state.value.wishlist.size)
-        assertTrue(fantasyBook1.key in vm.state.value.wishlist)
-        assertTrue(fantasyBook2.key in vm.state.value.wishlist)
-        assertTrue(horrorBook.key in vm.state.value.wishlist)
-    }
-
-    @Test
-    fun `removing one book does not affect other wishlisted books`() = runTest {
-        val vm = BookifyViewModel(repository)
-        vm.toggleWishlist(fantasyBook1.key)
-        vm.toggleWishlist(fantasyBook2.key)
-
-        vm.toggleWishlist(fantasyBook1.key) // remove only fantasyBook1
+        wishlistRepository.toggle(fantasyBook1.key)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(fantasyBook1.key in vm.state.value.wishlist)
-        assertTrue(fantasyBook2.key in vm.state.value.wishlist)
     }
 
     // ── Wishlist — derived state ──────────────────────────────────────────────
 
     @Test
     fun `wishlistedBooks is empty when nothing is wishlisted`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(vm.state.value.wishlistedBooks.isEmpty())
@@ -313,11 +287,12 @@ class BookifyViewModelTest {
 
     @Test
     fun `wishlistedBooks returns the correct books after adding`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        vm.toggleWishlist(fantasyBook1.key)
-        vm.toggleWishlist(horrorBook.key)
+        wishlistRepository.toggle(fantasyBook1.key)
+        wishlistRepository.toggle(horrorBook.key)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         val wishlisted = vm.state.value.wishlistedBooks
         assertEquals(2, wishlisted.size)
@@ -327,12 +302,14 @@ class BookifyViewModelTest {
 
     @Test
     fun `wishlistedBooks excludes a book after it is removed`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
-        vm.toggleWishlist(fantasyBook1.key)
-        vm.toggleWishlist(fantasyBook2.key)
+        wishlistRepository.toggle(fantasyBook1.key)
+        wishlistRepository.toggle(fantasyBook2.key)
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        vm.toggleWishlist(fantasyBook1.key) // remove
+        wishlistRepository.toggle(fantasyBook1.key) // remove
+        testDispatcher.scheduler.advanceUntilIdle()
 
         val wishlisted = vm.state.value.wishlistedBooks
         assertFalse(fantasyBook1 in wishlisted)
@@ -341,12 +318,13 @@ class BookifyViewModelTest {
 
     @Test
     fun `wishlistedBooks can contain books from different genres`() = runTest {
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        vm.toggleWishlist(fantasyBook1.key)
-        vm.toggleWishlist(scifiBook.key)
-        vm.toggleWishlist(thrillerBook.key)
+        wishlistRepository.toggle(fantasyBook1.key)
+        wishlistRepository.toggle(scifiBook.key)
+        wishlistRepository.toggle(thrillerBook.key)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         val wishlisted = vm.state.value.wishlistedBooks
         assertTrue(fantasyBook1 in wishlisted)
@@ -354,83 +332,75 @@ class BookifyViewModelTest {
         assertTrue(thrillerBook in wishlisted)
     }
 
-    // ── Theme ────────────────────────────────────────────────────────────────
+    // ── Settings navigation ───────────────────────────────────────────────────
 
     @Test
-    fun `initial theme is SAGE`() = runTest {
-        val vm = BookifyViewModel(repository)
-        assertEquals(AppTheme.SAGE, vm.state.value.theme)
+    fun `initial openSettings is false`() = runTest {
+        val vm = buildVm()
+        assertFalse(vm.state.value.openSettings)
     }
 
     @Test
-    fun `selectTheme updates the theme field`() = runTest {
-        val vm = BookifyViewModel(repository)
+    fun `openSettings sets openSettings to true`() = runTest {
+        val vm = buildVm()
 
-        vm.selectTheme(AppTheme.INK)
+        vm.openSettings()
 
-        assertEquals(AppTheme.INK, vm.state.value.theme)
+        assertTrue(vm.state.value.openSettings)
     }
 
     @Test
-    fun `selectTheme can select every available theme`() = runTest {
-        val vm = BookifyViewModel(repository)
-
-        AppTheme.entries.forEach { theme ->
-            vm.selectTheme(theme)
-            assertEquals(theme, vm.state.value.theme)
-        }
-    }
-
-    @Test
-    fun `selectTheme does not affect tab`() = runTest {
-        val vm = BookifyViewModel(repository)
-        vm.selectTab(AppTab.WISHLIST)
-
-        vm.selectTheme(AppTheme.LIBRARY)
-
-        assertEquals(AppTab.WISHLIST, vm.state.value.tab)
-    }
-
-    @Test
-    fun `selectTheme does not affect genre`() = runTest {
-        val vm = BookifyViewModel(repository)
-        testDispatcher.scheduler.advanceUntilIdle()
-        vm.selectGenre(Genre.HORROR)
-
-        vm.selectTheme(AppTheme.BONE)
-
-        assertEquals(Genre.HORROR, vm.state.value.genre)
-    }
-
-    @Test
-    fun `selectTheme does not affect wishlist`() = runTest {
-        val vm = BookifyViewModel(repository)
-        vm.toggleWishlist(fantasyBook1.key)
-
-        vm.selectTheme(AppTheme.INK)
-
-        assertTrue(fantasyBook1.key in vm.state.value.wishlist)
-    }
-
-    @Test
-    fun `selectTheme does not affect openBook`() = runTest {
-        val vm = BookifyViewModel(repository)
+    fun `openSettings clears openBook`() = runTest {
+        val vm = buildVm()
         vm.openBook(fantasyBook1)
 
-        vm.selectTheme(AppTheme.LIBRARY)
+        vm.openSettings()
 
-        assertEquals(fantasyBook1, vm.state.value.openBook)
+        assertNull(vm.state.value.openBook)
+    }
+
+    @Test
+    fun `closeSettings sets openSettings to false`() = runTest {
+        val vm = buildVm()
+        vm.openSettings()
+
+        vm.closeSettings()
+
+        assertFalse(vm.state.value.openSettings)
+    }
+
+    @Test
+    fun `selectTab closes settings`() = runTest {
+        val vm = buildVm()
+        vm.openSettings()
+
+        vm.selectTab(AppTab.WISHLIST)
+
+        assertFalse(vm.state.value.openSettings)
+    }
+
+    @Test
+    fun `closeSettings does not affect other state`() = runTest {
+        val vm = buildVm()
+        vm.selectTab(AppTab.WISHLIST)
+        wishlistRepository.toggle(fantasyBook1.key)
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.openSettings()
+
+        vm.closeSettings()
+
+        assertEquals(AppTab.WISHLIST, vm.state.value.tab)
+        assertTrue(fantasyBook1.key in vm.state.value.wishlist)
     }
 
     // ── allBooks deduplication ────────────────────────────────────────────────
 
     @Test
     fun `allBooks has no duplicate keys when the same book appears in multiple genres`() = runTest {
-        // API sometimes returns the same work in two different genre buckets
-        val duplicateBook = fantasyBook1 // same coverUrl → same key
+        val duplicateBook = fantasyBook1
         repository.setup(Genre.HORROR, Result.success(listOf(duplicateBook, horrorBook)))
 
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
         val keys = vm.state.value.allBooks.map { it.key }
@@ -442,10 +412,11 @@ class BookifyViewModelTest {
         val duplicateBook = fantasyBook1
         repository.setup(Genre.HORROR, Result.success(listOf(duplicateBook, horrorBook)))
 
-        val vm = BookifyViewModel(repository)
+        val vm = buildVm()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        vm.toggleWishlist(fantasyBook1.key)
+        wishlistRepository.toggle(fantasyBook1.key)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, vm.state.value.wishlistedBooks.size)
     }
@@ -462,5 +433,14 @@ private class FakeMultiGenreRepository : BookRepository {
     override suspend fun getBooksByGenre(genre: Genre): Result<List<Book>> {
         callCount[genre] = (callCount[genre] ?: 0) + 1
         return results[genre] ?: Result.success(emptyList())
+    }
+}
+
+private class FakeWishlistRepository : WishlistRepository {
+    private val _wishlist = MutableStateFlow<Set<String>>(emptySet())
+    override val wishlist: StateFlow<Set<String>> = _wishlist
+
+    override fun toggle(bookKey: String) {
+        _wishlist.value = if (bookKey in _wishlist.value) _wishlist.value - bookKey else _wishlist.value + bookKey
     }
 }

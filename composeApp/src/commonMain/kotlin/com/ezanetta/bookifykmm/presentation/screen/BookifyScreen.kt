@@ -57,18 +57,27 @@ import com.ezanetta.bookifykmm.presentation.theme.LocalBookifyDensity
 import com.ezanetta.bookifykmm.presentation.theme.NewsreaderFamily
 import com.ezanetta.bookifykmm.presentation.theme.toColors
 import com.ezanetta.bookifykmm.presentation.viewmodel.BookifyViewModel
+import com.ezanetta.bookifykmm.presentation.viewmodel.SettingsViewModel
 import org.koin.compose.getKoin
 
 @Composable
 fun BookifyScreen() {
     val koin = getKoin()
     val viewModel: BookifyViewModel = viewModel { koin.get(BookifyViewModel::class) }
+    val settingsViewModel: SettingsViewModel = viewModel { koin.get(SettingsViewModel::class) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val colors = state.theme.toColors()
+    val selectedTheme by settingsViewModel.selectedTheme.collectAsStateWithLifecycle()
+    val colors = selectedTheme.toColors()
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     val genreGridStates = remember { Genre.entries.associateWith { LazyGridState() } }
     val wishlistGridState = rememberLazyGridState()
+
+    val navTarget: NavTarget = when {
+        state.openBook != null -> NavTarget.Detail(state.openBook!!)
+        state.openSettings -> NavTarget.Settings
+        else -> NavTarget.Tabs
+    }
 
     CompositionLocalProvider(LocalBookifyColors provides colors) {
     Box(modifier = Modifier.fillMaxSize().background(colors.bg)) {
@@ -76,9 +85,9 @@ fun BookifyScreen() {
             Spacer(Modifier.height(statusBarHeight))
 
             AnimatedContent(
-                targetState = state.openBook,
+                targetState = navTarget,
                 transitionSpec = {
-                    if (targetState != null) {
+                    if (targetState is NavTarget.Detail || targetState is NavTarget.Settings) {
                         (slideInVertically { it / 14 } + fadeIn()) togetherWith fadeOut()
                     } else {
                         fadeIn() togetherWith fadeOut()
@@ -86,16 +95,18 @@ fun BookifyScreen() {
                 },
                 label = "screen",
                 modifier = Modifier.weight(1f),
-            ) { openBook ->
-                if (openBook != null) {
-                    DetailScreen(
-                        book = openBook,
-                        wishlisted = openBook.key in state.wishlist,
+            ) { target ->
+                when (target) {
+                    is NavTarget.Detail -> DetailScreen(
+                        book = target.book,
                         onBack = { viewModel.closeBook() },
-                        onToggleWishlist = { viewModel.toggleWishlist(openBook.key) },
                     )
-                } else {
-                    when (state.tab) {
+                    NavTarget.Settings -> SettingsScreen(
+                        selectedTheme = selectedTheme,
+                        onSelectTheme = { settingsViewModel.selectTheme(it) },
+                        onBack = { viewModel.closeSettings() },
+                    )
+                    NavTarget.Tabs -> when (state.tab) {
                         AppTab.HOME -> HomeContent(viewModel = viewModel, genreGridStates = genreGridStates)
                         AppTab.WISHLIST -> WishlistContent(viewModel = viewModel, gridState = wishlistGridState)
                     }
@@ -112,6 +123,12 @@ fun BookifyScreen() {
     } // CompositionLocalProvider
 }
 
+private sealed class NavTarget {
+    data class Detail(val book: Book) : NavTarget()
+    data object Settings : NavTarget()
+    data object Tabs : NavTarget()
+}
+
 @Composable
 private fun HomeContent(viewModel: BookifyViewModel, genreGridStates: Map<Genre, LazyGridState>) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -120,8 +137,7 @@ private fun HomeContent(viewModel: BookifyViewModel, genreGridStates: Map<Genre,
         BookifyHeader(
             eyebrow = "YOUR SHELF",
             title = "Bookify",
-            selectedTheme = state.theme,
-            onSelectTheme = { viewModel.selectTheme(it) },
+            onSettingsClick = { viewModel.openSettings() },
         )
         GenreSwitcher(
             selectedGenre = state.genre,
@@ -164,8 +180,7 @@ private fun WishlistContent(viewModel: BookifyViewModel, gridState: LazyGridStat
         BookifyHeader(
             eyebrow = eyebrow,
             title = "Wishlist",
-            selectedTheme = state.theme,
-            onSelectTheme = { viewModel.selectTheme(it) },
+            onSettingsClick = { viewModel.openSettings() },
         )
         Spacer(Modifier.height(6.dp))
         if (wishlisted.isEmpty()) {

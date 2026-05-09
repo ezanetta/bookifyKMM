@@ -3,10 +3,10 @@ package com.ezanetta.bookifykmm.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ezanetta.bookifykmm.domain.model.AppTab
-import com.ezanetta.bookifykmm.domain.model.AppTheme
 import com.ezanetta.bookifykmm.domain.model.Book
 import com.ezanetta.bookifykmm.domain.model.Genre
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
+import com.ezanetta.bookifykmm.domain.repository.WishlistRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,8 +19,8 @@ data class BookifyUiState(
     val tab: AppTab = AppTab.HOME,
     val genre: Genre = Genre.FANTASY,
     val openBook: Book? = null,
+    val openSettings: Boolean = false,
     val wishlist: Set<String> = emptySet(),
-    val theme: AppTheme = AppTheme.SAGE,
     // Books keyed by genre — populated lazily
     val booksByGenre: Map<Genre, List<Book>> = emptyMap(),
     val loading: Boolean = true,
@@ -33,12 +33,18 @@ data class BookifyUiState(
 
 class BookifyViewModel(
     private val repository: BookRepository,
+    wishlistRepository: WishlistRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BookifyUiState())
     val state: StateFlow<BookifyUiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            wishlistRepository.wishlist.collect { wishlist ->
+                _state.update { it.copy(wishlist = wishlist) }
+            }
+        }
         loadAllGenres()
     }
 
@@ -58,18 +64,15 @@ class BookifyViewModel(
     }
 
     fun selectTab(tab: AppTab) {
-        _state.update { it.copy(tab = tab, openBook = null) }
+        _state.update { it.copy(tab = tab, openBook = null, openSettings = false) }
     }
 
-    fun toggleWishlist(bookKey: String) {
-        _state.update { state ->
-            val updated = if (bookKey in state.wishlist) state.wishlist - bookKey else state.wishlist + bookKey
-            state.copy(wishlist = updated)
-        }
+    fun openSettings() {
+        _state.update { it.copy(openSettings = true, openBook = null) }
     }
 
-    fun selectTheme(theme: AppTheme) {
-        _state.update { it.copy(theme = theme) }
+    fun closeSettings() {
+        _state.update { it.copy(openSettings = false) }
     }
 
     fun retryLoad() {
