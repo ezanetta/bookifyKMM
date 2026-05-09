@@ -5,7 +5,14 @@ import com.ezanetta.bookifykmm.data.network.BookApiService
 import com.ezanetta.bookifykmm.domain.model.Book
 import com.ezanetta.bookifykmm.domain.model.Genre
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 
+@SingleIn(AppScope::class)
+@ContributesBinding(AppScope::class)
+@Inject
 class BookRepositoryImpl(
     private val apiService: BookApiService
 ) : BookRepository {

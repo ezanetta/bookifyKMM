@@ -2,6 +2,10 @@ package com.ezanetta.bookifykmm.data.repository
 
 import com.ezanetta.bookifykmm.data.local.LocalStorage
 import com.ezanetta.bookifykmm.domain.repository.WishlistRepository
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,6 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 private const val KEY_WISHLIST = "wishlist"
 private const val DELIMITER = "|"
 
+@SingleIn(AppScope::class)
+@ContributesBinding(AppScope::class)
+@Inject
 class WishlistRepositoryImpl(private val localStorage: LocalStorage) : WishlistRepository {
 
     private val _wishlist = MutableStateFlow(loadWishlist())

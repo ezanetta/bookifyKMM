@@ -7,6 +7,7 @@ import com.ezanetta.bookifykmm.domain.model.Book
 import com.ezanetta.bookifykmm.domain.model.Genre
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
 import com.ezanetta.bookifykmm.domain.repository.WishlistRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ data class BookifyUiState(
     val wishlistedBooks: List<Book> get() = allBooks.filter { it.key in wishlist }
 }
 
+@Inject
 class BookifyViewModel(
     private val repository: BookRepository,
     wishlistRepository: WishlistRepository,

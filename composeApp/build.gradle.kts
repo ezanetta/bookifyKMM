@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.metro)
 }
 
 kotlin {
@@ -30,7 +31,6 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.koin.android)
             implementation(libs.multiplatform.settings)
         }
         iosMain.dependencies {
@@ -49,9 +49,6 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
-            // DI
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
             // Image loading
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)

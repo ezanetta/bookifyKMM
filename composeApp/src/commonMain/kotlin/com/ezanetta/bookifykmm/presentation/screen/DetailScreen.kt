@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ezanetta.bookifykmm.di.AppGraph
 import com.ezanetta.bookifykmm.domain.model.Book
 import com.ezanetta.bookifykmm.presentation.components.BookCoverImage
 import com.ezanetta.bookifykmm.presentation.components.Tag
@@ -51,17 +52,16 @@ import com.ezanetta.bookifykmm.presentation.theme.DmSansFamily
 import com.ezanetta.bookifykmm.presentation.theme.LocalBookifyColors
 import com.ezanetta.bookifykmm.presentation.theme.NewsreaderFamily
 import com.ezanetta.bookifykmm.presentation.viewmodel.DetailViewModel
-import org.koin.compose.getKoin
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
     book: Book,
     onBack: () -> Unit,
+    graph: AppGraph,
     modifier: Modifier = Modifier,
 ) {
-    val koin = getKoin()
-    val viewModel: DetailViewModel = viewModel(key = book.key) { koin.get(DetailViewModel::class) }
+    val viewModel: DetailViewModel = viewModel(key = book.key) { graph.detailViewModel() }
     LaunchedEffect(book.key) { viewModel.initialize(book.key) }
     val wishlisted by viewModel.isWishlisted.collectAsStateWithLifecycle()
 
