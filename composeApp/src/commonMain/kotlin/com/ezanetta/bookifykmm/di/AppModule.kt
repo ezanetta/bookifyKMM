@@ -5,6 +5,7 @@ import com.ezanetta.bookifykmm.data.network.OpenLibraryApiService
 import com.ezanetta.bookifykmm.data.repository.BookRepositoryImpl
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
 import com.ezanetta.bookifykmm.presentation.viewmodel.BookListViewModel
+import com.ezanetta.bookifykmm.presentation.viewmodel.BookifyViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
@@ -33,6 +34,7 @@ val repositoryModule = module {
 
 val viewModelModule = module {
     factory { BookListViewModel(get()) }
+    factory { BookifyViewModel(get()) }
 }
 
 val appModules = listOf(networkModule, repositoryModule, viewModelModule)
