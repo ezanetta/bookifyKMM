@@ -65,7 +65,9 @@ Pure Kotlin — no framework dependencies. Defines the `Book`, `Genre`, `AppThem
 
 ### Dependency Injection
 
-[Koin](https://insert-koin.io/) is used for dependency injection across all layers. Platform-specific modules (Android/iOS) wire up platform implementations of local storage while the rest of the graph is shared.
+[Metro 1.0.0](https://zacsweers.github.io/metro/latest/) is used for dependency injection — a compile-time KMP DI framework that validates the entire dependency graph at **build time** via a Kotlin compiler plugin. Wiring errors surface as compile errors instead of runtime crashes.
+
+The graph is structured around a common `AppGraph` interface (exposing ViewModel factory functions) with platform-specific `@DependencyGraph` implementations in `androidMain` and `iosMain`. Platform-specific bindings (e.g. `LocalStorage`) are contributed automatically via `@ContributesTo(AppScope::class)` binding containers in each platform source set, replacing the old `expect`/`actual` module pattern.
 
 ---
 
@@ -77,7 +79,7 @@ Pure Kotlin — no framework dependencies. Defines the `Book`, `Genre`, `AppThem
 | Networking | Ktor 3.1 (OkHttp / Darwin engines) |
 | Serialization | Kotlinx Serialization 1.8 |
 | Image loading | Coil 3.2 |
-| Dependency Injection | Koin 4.0 |
+| Dependency Injection | Metro 1.0 |
 | Local storage | Multiplatform Settings 1.3 |
 | Async | Kotlin Coroutines 1.10 + StateFlow |
 | Book data | OpenLibrary.org (public API, no auth) |
@@ -108,7 +110,7 @@ The project has a dedicated `commonTest` source set with **8 test classes** cove
 KMM's `expect`/`actual` mechanism is used only where necessary:
 
 - **`getPlatform()`** — returns platform name/version (used for diagnostics).
-- **`platformModule`** (Koin) — each platform provides its own `LocalStorage` implementation: `SharedPreferencesSettings` on Android, `NSUserDefaultsSettings` on iOS.
+- **`LocalStorage` binding** — each platform contributes its own `LocalStorage` implementation via a `@BindingContainer`: `SharedPreferencesSettings` on Android, `NSUserDefaultsSettings` on iOS.
 - **Network engine** — Ktor uses OkHttp on Android and the Darwin (URLSession) engine on iOS.
 
 ---
