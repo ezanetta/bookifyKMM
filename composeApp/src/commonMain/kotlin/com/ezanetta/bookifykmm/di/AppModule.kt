@@ -3,8 +3,10 @@ package com.ezanetta.bookifykmm.di
 import com.ezanetta.bookifykmm.data.network.BookApiService
 import com.ezanetta.bookifykmm.data.network.OpenLibraryApiService
 import com.ezanetta.bookifykmm.data.repository.BookRepositoryImpl
+import com.ezanetta.bookifykmm.data.repository.ThemeRepositoryImpl
 import com.ezanetta.bookifykmm.data.repository.WishlistRepositoryImpl
 import com.ezanetta.bookifykmm.domain.repository.BookRepository
+import com.ezanetta.bookifykmm.domain.repository.ThemeRepository
 import com.ezanetta.bookifykmm.domain.repository.WishlistRepository
 import com.ezanetta.bookifykmm.presentation.viewmodel.BookifyViewModel
 import com.ezanetta.bookifykmm.presentation.viewmodel.DetailViewModel
@@ -34,12 +36,13 @@ val networkModule = module {
 val repositoryModule = module {
     singleOf(::BookRepositoryImpl) bind BookRepository::class
     singleOf(::WishlistRepositoryImpl) bind WishlistRepository::class
+    singleOf(::ThemeRepositoryImpl) bind ThemeRepository::class
 }
 
 val viewModelModule = module {
     factory { BookifyViewModel(get(), get()) }
     factory { DetailViewModel(get()) }
-    factory { SettingsViewModel() }
+    factory { SettingsViewModel(get()) }
 }
 
-val appModules = listOf(networkModule, repositoryModule, viewModelModule)
+val appModules = listOf(networkModule, repositoryModule, viewModelModule, platformModule)

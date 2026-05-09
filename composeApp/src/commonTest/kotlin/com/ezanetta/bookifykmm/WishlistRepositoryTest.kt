@@ -1,6 +1,7 @@
 package com.ezanetta.bookifykmm
 
 import com.ezanetta.bookifykmm.data.repository.WishlistRepositoryImpl
+import com.russhwolf.settings.MapSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -8,13 +9,25 @@ import kotlin.test.assertTrue
 
 class WishlistRepositoryTest {
 
-    private fun repo() = WishlistRepositoryImpl()
+    private fun repo(settings: MapSettings = MapSettings()) = WishlistRepositoryImpl(settings)
 
     // ── Initial state ─────────────────────────────────────────────────────────
 
     @Test
-    fun `wishlist is empty on creation`() {
+    fun `wishlist is empty when storage is empty`() {
         assertTrue(repo().wishlist.value.isEmpty())
+    }
+
+    @Test
+    fun `wishlist is restored from storage on creation`() {
+        val settings = MapSettings()
+        val first = repo(settings)
+        first.toggle("key1")
+        first.toggle("key2")
+
+        val second = repo(settings)
+
+        assertEquals(setOf("key1", "key2"), second.wishlist.value)
     }
 
     // ── toggle — add ──────────────────────────────────────────────────────────
@@ -73,7 +86,29 @@ class WishlistRepositoryTest {
         assertTrue("key2" in r.wishlist.value)
     }
 
-    // ── StateFlow emission ────────────────────────────────────────────────────
+    // ── Persistence ───────────────────────────────────────────────────────────
+
+    @Test
+    fun `toggle persists the addition to storage`() {
+        val settings = MapSettings()
+        repo(settings).toggle("key1")
+
+        assertTrue("key1" in repo(settings).wishlist.value)
+    }
+
+    @Test
+    fun `toggle persists the removal to storage`() {
+        val settings = MapSettings()
+        val r = repo(settings)
+        r.toggle("key1")
+        r.toggle("key2")
+
+        r.toggle("key1")
+
+        val restored = repo(settings)
+        assertFalse("key1" in restored.wishlist.value)
+        assertTrue("key2" in restored.wishlist.value)
+    }
 
     @Test
     fun `wishlist value reflects the latest state after multiple toggles`() {
@@ -81,7 +116,7 @@ class WishlistRepositoryTest {
 
         r.toggle("key1")
         r.toggle("key2")
-        r.toggle("key1") // remove key1
+        r.toggle("key1")
 
         assertEquals(setOf("key2"), r.wishlist.value)
     }
